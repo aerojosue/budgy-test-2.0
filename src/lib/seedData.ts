@@ -69,19 +69,22 @@ export async function seedUserData(userId: string, householdId: string) {
     console.log('Creating accounts...');
     const accounts = [
       {
+        name: 'Cash Wallet',
+        type: 'cash',
+        currency: 'USD',
+        balance: 200,
+      },
+      {
         name: 'Chase Checking',
         type: 'bank',
         currency: 'USD',
         balance: 2500,
       },
       {
-        name: 'Nubank Card',
-        type: 'credit_card',
-        currency: 'BRL',
-        balance: -850,
-        credit_limit: 10000,
-        closing_day: 20,
-        due_day: 27,
+        name: 'Savings Account',
+        type: 'bank',
+        currency: 'USD',
+        balance: 5000,
       },
       {
         name: 'Galicia Visa',
@@ -91,12 +94,6 @@ export async function seedUserData(userId: string, householdId: string) {
         credit_limit: 500000,
         closing_day: 25,
         due_day: 5,
-      },
-      {
-        name: 'Cash Wallet',
-        type: 'cash',
-        currency: 'USD',
-        balance: 200,
       },
     ];
 
@@ -156,33 +153,33 @@ export async function seedUserData(userId: string, householdId: string) {
         type: 'expense',
         description: 'Uber ride',
       },
-      // BRL expenses
+      // More USD expenses
       {
-        account: 'Nubank Card',
-        category: 'Groceries',
-        amount: 250,
-        currency: 'BRL',
+        account: 'Savings Account',
+        category: 'Bills',
+        amount: 120,
+        currency: 'USD',
         date: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000),
         type: 'expense',
-        description: 'Pão de Açúcar',
+        description: 'Internet bill',
       },
       {
-        account: 'Nubank Card',
+        account: 'Chase Checking',
         category: 'Restaurants',
-        amount: 120,
-        currency: 'BRL',
+        amount: 85,
+        currency: 'USD',
         date: new Date(today.getTime() - 4 * 24 * 60 * 60 * 1000),
         type: 'expense',
         description: 'Dinner at restaurant',
       },
       {
-        account: 'Nubank Card',
-        category: 'Transportation',
+        account: 'Cash Wallet',
+        category: 'Entertainment',
         amount: 45,
-        currency: 'BRL',
-        date: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000),
+        currency: 'USD',
+        date: new Date(today.getTime() - 6 * 24 * 60 * 60 * 1000),
         type: 'expense',
-        description: '99 taxi',
+        description: 'Movie tickets',
       },
       // ARS expenses
       {

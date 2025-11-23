@@ -16,18 +16,28 @@ export function useHousehold() {
 
       const { data: members, error: membersError } = await supabase
         .from('household_members')
-        .select('*, households(*)')
-        .eq('user_id', user.id);
+        .select('household_id, role, households(id, name, owner_id, created_at, updated_at)')
+        .eq('user_id', user.id)
+        .single();
 
-      if (membersError) throw membersError;
+      if (membersError) {
+        console.error('Error fetching household:', membersError);
+        throw membersError;
+      }
 
-      const households = members?.map((member: HouseholdMember & { households: Household }) => ({
-        ...member.households,
-        role: member.role,
-      })) || [];
+      if (!members || !members.households) return null;
 
-      return households.length > 0 ? households[0] : null;
+      const household = Array.isArray(members.households)
+        ? members.households[0]
+        : members.households;
+
+      return {
+        ...household,
+        role: members.role,
+      };
     },
     enabled: !!user,
+    retry: 3,
+    staleTime: 1000 * 60 * 5,
   });
 }
