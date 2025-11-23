@@ -37,9 +37,19 @@ export function AccountsPage() {
 
   const createAccount = useMutation({
     mutationFn: async (data: typeof formData) => {
-      if (!household) throw new Error('No household');
+      console.log('=== CREATE ACCOUNT START ===');
+      console.log('Form data:', data);
+      console.log('Household:', household);
 
-      const { error } = await supabase.from('accounts').insert({
+      if (!household) {
+        console.error('ERROR: No household found!');
+        alert('Error: No household ID found. Please refresh the page and try again.');
+        throw new Error('No household');
+      }
+
+      console.log('Household ID:', household.id);
+
+      const accountData = {
         household_id: household.id,
         name: data.name,
         type: data.type,
@@ -48,11 +58,26 @@ export function AccountsPage() {
         credit_limit: data.credit_limit ? parseFloat(data.credit_limit) : null,
         closing_day: data.closing_day ? parseInt(data.closing_day) : null,
         due_day: data.due_day ? parseInt(data.due_day) : null,
-      });
+      };
 
-      if (error) throw error;
+      console.log('Inserting account data:', accountData);
+
+      const { data: result, error } = await supabase
+        .from('accounts')
+        .insert(accountData)
+        .select();
+
+      if (error) {
+        console.error('Supabase error:', error);
+        alert(`Error creating account: ${error.message}`);
+        throw error;
+      }
+
+      console.log('Account created successfully:', result);
+      return result;
     },
     onSuccess: () => {
+      console.log('=== CREATE ACCOUNT SUCCESS ===');
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       setShowModal(false);
       setFormData({
@@ -65,10 +90,24 @@ export function AccountsPage() {
         due_day: '',
       });
     },
+    onError: (error) => {
+      console.error('=== CREATE ACCOUNT ERROR ===');
+      console.error('Error details:', error);
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('=== FORM SUBMIT ===');
+    console.log('Household available:', !!household);
+    console.log('Form data:', formData);
+
+    if (!household) {
+      console.error('Cannot submit: No household');
+      alert('Error: No household ID found. Please refresh the page and try again.');
+      return;
+    }
+
     createAccount.mutate(formData);
   };
 

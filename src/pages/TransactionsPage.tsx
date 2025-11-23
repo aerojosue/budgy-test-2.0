@@ -94,47 +94,70 @@ export function TransactionsPage() {
 
   const createTransaction = useMutation({
     mutationFn: async (data: typeof formData) => {
-      if (!household) throw new Error('No household');
+      console.log('=== CREATE TRANSACTION START ===');
+      console.log('Form data:', data);
+      console.log('Household:', household);
+      console.log('Available accounts:', accounts);
+
+      if (!household) {
+        console.error('ERROR: No household found!');
+        alert('Error: No household ID found. Please refresh the page and try again.');
+        throw new Error('No household');
+      }
 
       const account = accounts?.find((a) => a.id === data.account_id);
-      if (!account) throw new Error('Account not found');
+      if (!account) {
+        console.error('ERROR: Account not found!');
+        alert('Error: Selected account not found. Please try again.');
+        throw new Error('Account not found');
+      }
+
+      console.log('Selected account:', account);
 
       const amount = parseFloat(data.amount);
 
-      // Insert transaction
+      const txData = {
+        household_id: household.id,
+        account_id: data.account_id,
+        category_id: data.category_id || null,
+        to_account_id: data.to_account_id || null,
+        amount: amount,
+        currency: data.currency,
+        date: data.date,
+        type: data.type,
+        description: data.description || null,
+        is_installment: false,
+      };
+
+      console.log('Inserting transaction:', txData);
+
       const { data: newTransaction, error: txError } = await supabase
         .from('transactions')
-        .insert({
-          household_id: household.id,
-          account_id: data.account_id,
-          category_id: data.category_id || null,
-          to_account_id: data.to_account_id || null,
-          amount: amount,
-          currency: data.currency,
-          date: data.date,
-          type: data.type,
-          description: data.description || null,
-          is_installment: false,
-        })
+        .insert(txData)
         .select()
         .single();
 
-      if (txError) throw txError;
+      if (txError) {
+        console.error('Transaction insert error:', txError);
+        alert(`Error creating transaction: ${txError.message}`);
+        throw txError;
+      }
 
-      // Update account balance
+      console.log('Transaction created:', newTransaction);
+
       let newBalance: number;
       if (data.type === 'income') {
         newBalance = new Decimal(account.balance).plus(amount).toNumber();
       } else if (data.type === 'expense') {
         newBalance = new Decimal(account.balance).minus(amount).toNumber();
       } else {
-        // Transfer
         newBalance = new Decimal(account.balance).minus(amount).toNumber();
 
         if (data.to_account_id) {
           const toAccount = accounts?.find((a) => a.id === data.to_account_id);
           if (toAccount) {
             const toNewBalance = new Decimal(toAccount.balance).plus(amount).toNumber();
+            console.log('Updating destination account balance:', toNewBalance);
             await supabase
               .from('accounts')
               .update({ balance: toNewBalance })
@@ -143,16 +166,24 @@ export function TransactionsPage() {
         }
       }
 
+      console.log('Updating account balance:', newBalance);
+
       const { error: updateError } = await supabase
         .from('accounts')
         .update({ balance: newBalance })
         .eq('id', data.account_id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Balance update error:', updateError);
+        alert(`Error updating account balance: ${updateError.message}`);
+        throw updateError;
+      }
 
+      console.log('Transaction completed successfully');
       return newTransaction;
     },
     onSuccess: () => {
+      console.log('=== CREATE TRANSACTION SUCCESS ===');
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
       queryClient.invalidateQueries({ queryKey: ['recent-transactions'] });
@@ -168,14 +199,35 @@ export function TransactionsPage() {
         description: '',
       });
     },
+    onError: (error) => {
+      console.error('=== CREATE TRANSACTION ERROR ===');
+      console.error('Error details:', error);
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('=== TRANSACTION FORM SUBMIT ===');
+    console.log('Household available:', !!household);
+    console.log('Form data:', formData);
+    console.log('Available accounts:', accounts?.length || 0);
+
+    if (!household) {
+      console.error('Cannot submit: No household');
+      alert('Error: No household ID found. Please refresh the page and try again.');
+      return;
+    }
+
     if (!formData.account_id) {
       alert('Please select an account');
       return;
     }
+
+    if (!accounts || accounts.length === 0) {
+      alert('No accounts available. Please create an account first.');
+      return;
+    }
+
     createTransaction.mutate(formData);
   };
 
@@ -390,26 +442,32 @@ export function TransactionsPage() {
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   {formData.type === 'transfer' ? 'From Account' : 'Account'}
                 </label>
-                <select
-                  value={formData.account_id}
-                  onChange={(e) => {
-                    const account = accounts?.find((a) => a.id === e.target.value);
-                    setFormData({
-                      ...formData,
-                      account_id: e.target.value,
-                      currency: account?.currency || 'USD',
-                    });
-                  }}
-                  className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-white"
-                  required
-                >
-                  <option value="">Select account</option>
-                  {accounts?.map((account) => (
-                    <option key={account.id} value={account.id}>
-                      {account.name} ({account.currency})
-                    </option>
-                  ))}
-                </select>
+                {!accounts || accounts.length === 0 ? (
+                  <div className="w-full px-4 py-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-400">
+                    No accounts found. Please create an account first in the Accounts page.
+                  </div>
+                ) : (
+                  <select
+                    value={formData.account_id}
+                    onChange={(e) => {
+                      const account = accounts?.find((a) => a.id === e.target.value);
+                      setFormData({
+                        ...formData,
+                        account_id: e.target.value,
+                        currency: account?.currency || 'USD',
+                      });
+                    }}
+                    className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-white"
+                    required
+                  >
+                    <option value="">Select account</option>
+                    {accounts?.map((account) => (
+                      <option key={account.id} value={account.id}>
+                        {account.name} ({account.currency})
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {formData.type === 'transfer' && (
